@@ -69,12 +69,16 @@ def create_app() -> Flask:
 app = create_app()
 
 
-# Basic CORS for browser clients (no extra dependency)
+# Robust CORS support for browser clients, handling OPTIONS preflight requests
 @app.after_request
 def add_cors_headers(resp: Response) -> Response:
     resp.headers["Access-Control-Allow-Origin"] = "*"
-    resp.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    
+    # Handle preflight OPTIONS requests directly
+    if request.method == "OPTIONS":
+        resp.status_code = 200
     return resp
 
 
@@ -118,10 +122,13 @@ def index():
     )
 
 
-@app.route("/api", methods=["GET"])
+@app.route("/api", methods=["GET", "OPTIONS"])
 @rate_limit
 async def api():
     """Unified API endpoint - handles file information and proxy modes."""
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+
     try:
         start_time = time.time()
         mode = request.args.get("mode")
